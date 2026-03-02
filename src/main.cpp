@@ -48,22 +48,25 @@ int getLedIndex(int row, int col) {
 
 void setup() {
   Serial.begin(115200);
-  Serial.println("Starting...");
+  while (!Serial) delay(10);
+  Serial.println("=== LED Speaker Starting ===");
+  delay(1000);
   
   pinMode(BUTTON_PIN, INPUT_PULLUP);
   pinMode(AUDIO_PIN, ANALOG);
+  Serial.println("FastLED init...");
   FastLED.addLeds<WS2812B, DATA_PIN, GRB>(leds, NUM_LEDS);
   FastLED.setBrightness(128);
   FastLED.clear();
   FastLED.show();
   
-  // Calibrate: measure ambient noise 20 times
-  Serial.println("Calibrating noise floor...");
+  // Quick calibration: 5 samples
+  Serial.println("Calibrating (keep quiet)...");
   double noiseSum = 0;
-  for (int i = 0; i < 20; i++) {
+  for (int i = 0; i < 5; i++) {
     double maxVal = 0;
     for (int j = 0; j < SAMPLES; j++) {
-      vReal[j] = analogRead(AUDIO_PIN) * 0.6;
+      vReal[j] = analogRead(AUDIO_PIN);
       vImag[j] = 0;
       delayMicroseconds(SAMPLING_DELAY);
     }
@@ -74,10 +77,11 @@ void setup() {
       if (vReal[k] > maxVal) maxVal = vReal[k];
     }
     noiseSum += maxVal;
-    Serial.printf("Sample %d: %.1f\n", i, maxVal);
+    Serial.printf("Cal %d: %.0f\n", i, maxVal);
   }
-  noiseFloor = (noiseSum / 20) + 15;
-  Serial.printf("Noise floor set to: %.1f\n", noiseFloor);
+  noiseFloor = (noiseSum / 5) + 15;
+  Serial.printf("Noise floor: %.0f\n", noiseFloor);
+  Serial.println("=== Ready ===");
   FastLED.clear();
   FastLED.show();
 }
