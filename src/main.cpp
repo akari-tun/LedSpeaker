@@ -20,6 +20,8 @@ float smoothedBands[FFT_COLS] = {0};
 
 int currentMode = 0; // Modes: 0=V-Fire, 1=V-Soft, 2=Off, 3=H-Fire, 4=H-Soft
 bool lastButtonState = HIGH;
+float noiseFloor = 20.0;  // Will be calibrated at startup
+bool calibrating = true;
 
 // Define a soft camera-friendly gradient palette
 DEFINE_GRADIENT_PALETTE(soft_gp) {
@@ -54,11 +56,31 @@ void setup() {
   pinMode(BUTTON_PIN, INPUT_PULLUP);
   pinMode(AUDIO_PIN, ANALOG);
   Serial.begin(115200);
-  delay(1000);
   FastLED.addLeds<WS2812B, DATA_PIN, GRB>(leds, NUM_LEDS);
   FastLED.setBrightness(128);  // 50% brightness
   FastLED.clear();
   FastLED.show();
+  
+  // Calibrate noise floor (read ambient noise for ~2 seconds)
+  Serial.println("Calibrating... keep quiet!");
+  double noiseSum = 0;
+  for (int i = 0; i < 100; i++) {
+    for (int j = 0; j < SAMPLES; j++) {
+      vReal[j] = analogRead(AUDIO_PIN) * 0.6;
+      vImag[j] = 0;
+      delayMicroseconds(SAMPLING_DELAY);
+    }
+    FFT.windowing(vReal, SAMPLES, FFT_WIN_TYP_HAMMING, FFT_FORWARD);
+    FFT.compute(vReal, vImag, SAMPLES, FFT_FORWARD);
+    FFT.complexToMagnitude(vReal, vImag, SAMPLES);
+    
+    double maxVal = 0;
+    for (int k = 0; k < SAMPLES/2; k++) maxVal = max(maxVal, vReal[k]);
+    noiseSum += maxVal;
+  }
+  noiseFloor = (noiseSum / 100) + 10;  // Add 10 as buffer
+  Serial.printf("Noise floor calibrated: %.1f\n", noiseFloor);
+  calibrating = false;
 }
 
 void loop() {
@@ -100,7 +122,7 @@ void loop() {
     }
 
     double rawValue = sum / bandsPerBand;
-    rawValue = max(rawValue - 20, 0.0); // noise floor
+    rawValue = max(rawValue - noiseFloor, 0.0); // calibrated noise floor
 
     float mapped = (currentMode <= 1)
                      ? map(rawValue, 0, 300, 0, NUM_ROWS)
