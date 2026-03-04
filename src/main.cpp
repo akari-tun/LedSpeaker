@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <FastLED.h>
+#include "arduinoFFT.h"
 
 #define MIC_PIN A0
 #define SAMPLES 100
@@ -9,11 +10,17 @@
 
 CRGB leds[NUM_LEDS];
 
+// FFT variables
+#define FFT_SAMPLES 128
+double vReal[FFT_SAMPLES];
+double vImag[FFT_SAMPLES];
+arduinoFFT FFT = arduinoFFT(vReal, vImag, FFT_SAMPLES, 10000); // 10kHz sampling rate
+
 void setup() {
   Serial.begin(115200);
   while (!Serial) delay(10);
   
-  Serial.println("=== FASTLED + CALIBRATION TEST ===");
+  Serial.println("=== FFT + FASTLED TEST ===");
   
   // Measure ambient noise floor
   long sum = 0;
@@ -31,16 +38,20 @@ void setup() {
   FastLED.addLeds<WS2812B, LED_PIN, GRB>(leds, NUM_LEDS);
   FastLED.setBrightness(BRIGHTNESS);
   
-  // Test pattern: all LEDs red
-  fill_solid(leds, NUM_LEDS, CRGB::Red);
+  // Test pattern: all LEDs blue
+  fill_solid(leds, NUM_LEDS, CRGB::Blue);
   FastLED.show();
   
-  Serial.println("FastLED initialized - LEDs should be red");
+  Serial.println("FFT initialized - LEDs should be blue");
   
   delay(500);
 }
 
 void loop() {
+  // Simple FFT test: just read one sample
+  vReal[0] = analogRead(MIC_PIN);
+  vImag[0] = 0;
+  
   Serial.println("Hello from ESP32-C3");
   delay(1000);
 }
