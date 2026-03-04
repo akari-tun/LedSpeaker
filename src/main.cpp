@@ -1,6 +1,5 @@
 #include <Arduino.h>
 #include <FastLED.h>
-#include "arduinoFFT.h"
 
 #define MIC_PIN A0
 #define SAMPLES 100
@@ -10,17 +9,11 @@
 
 CRGB leds[NUM_LEDS];
 
-// FFT variables
-#define FFT_SAMPLES 128
-double vReal[FFT_SAMPLES];
-double vImag[FFT_SAMPLES];
-arduinoFFT FFT = arduinoFFT(vReal, vImag, FFT_SAMPLES, 10000); // 10kHz sampling rate
-
 void setup() {
   Serial.begin(115200);
   while (!Serial) delay(10);
   
-  Serial.println("=== FFT + FASTLED TEST ===");
+  Serial.println("=== SIMULATED AUDIO PROCESSING TEST ===");
   
   // Measure ambient noise floor
   long sum = 0;
@@ -38,20 +31,32 @@ void setup() {
   FastLED.addLeds<WS2812B, LED_PIN, GRB>(leds, NUM_LEDS);
   FastLED.setBrightness(BRIGHTNESS);
   
-  // Test pattern: all LEDs blue
-  fill_solid(leds, NUM_LEDS, CRGB::Blue);
+  // Test pattern: all LEDs green
+  fill_solid(leds, NUM_LEDS, CRGB::Green);
   FastLED.show();
   
-  Serial.println("FFT initialized - LEDs should be blue");
+  Serial.println("Simulated audio processing - LEDs should be green");
   
   delay(500);
 }
 
 void loop() {
-  // Simple FFT test: just read one sample
-  vReal[0] = analogRead(MIC_PIN);
-  vImag[0] = 0;
+  // Simulate audio processing without FFT
+  int micValue = analogRead(MIC_PIN);
+  int ledIndex = map(micValue, 0, 4095, 0, NUM_LEDS-1);
   
-  Serial.println("Hello from ESP32-C3");
-  delay(1000);
+  // Clear all LEDs
+  fill_solid(leds, NUM_LEDS, CRGB::Black);
+  // Light up based on simulated audio level
+  for(int i = 0; i <= ledIndex; i++) {
+    leds[i] = CRGB::Green;
+  }
+  FastLED.show();
+  
+  Serial.print("Mic: ");
+  Serial.print(micValue);
+  Serial.print(" -> LED index: ");
+  Serial.println(ledIndex);
+  
+  delay(100);
 }
